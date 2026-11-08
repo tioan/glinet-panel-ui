@@ -24,11 +24,16 @@ import { ui_build, ui_seed, nav_flush, view_status, view_wake, view_pin,
 	 view_goto, view_logout, view_lock } from 'lvgl.page';
 import { loader_init, pages_load, page_load } from 'lvgl.loader';
 import { runtime_init, settings } from 'lvgl.runtime';
+import { ROTATION } from 'lvgl.theme';
 import { SOURCES, DEFAULTS, CHART_POINTS } from 'lib.sources';
 
 const CONFIG = 'glinet_panel';
 const APP_DIR = getenv('PANEL_APP_DIR') ?? '/usr/share/ucode/glinet-panel-ui';
 const ROUNDS = 3;
+
+/* With SHOT_DIR set, every root is saved once per mode, as
+   <rotation>-<mode>-<page>.png, to look at the layout. */
+const SHOT_DIR = getenv('SHOT_DIR');
 
 let failures = 0;
 let checks = 0;
@@ -47,8 +52,13 @@ function survives(what, fn) {
 }
 
 function every_root(mode) {
-	for (let name in view_status().pages)
+	for (let name in view_status().pages) {
 		survives(sprintf('%s: show %s', mode, name), () => view_goto(name));
+
+		if (SHOT_DIR)
+			lv.screenshot(sprintf('%s/%d-%s-%s.png', SHOT_DIR, ROTATION,
+					      mode, name));
+	}
 }
 
 if (!lv.init())
@@ -56,6 +66,10 @@ if (!lv.init())
 
 if (!lv.display_drm(getenv('PANEL_DRM_DEVICE') ?? '/dev/dri/card0', -1))
 	die('cannot open the DRM display');
+
+/* As panel.uc does: the theme already laid out for this rotation. */
+lv.display_rotation(ROTATION);
+printf('== rotation %d ==\n', ROTATION);
 
 runtime_init({ config: CONFIG });
 loader_init({ dir: APP_DIR, config: CONFIG });
